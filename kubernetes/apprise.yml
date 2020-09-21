@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apprise
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: apprise-pv
+  namespace: apprise
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: apprise-pv-claim
+  namespace: apprise
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apprise-api
+  namespace: apprise
+  labels:
+    app: apprise
+spec:
+  selector:
+    matchLabels:
+      app: apprise
+  template:
+    metadata:
+      labels:
+        app: apprise
+    spec:
+      containers:
+        - name: apprise
+          image: bkonicek/apprise-api
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: apprise-pv-storage
+              mountPath: "/config"
+      volumes:
+        - name: apprise-pv-storage
+          persistentVolumeClaim:
+            claimName: apprise-pv-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apprise-api
+  namespace: apprise
+spec:
+  type: LoadBalancer
+  selector:
+    app: apprise
+  ports:
+    - port: 8000
+      targetPort: 8000
